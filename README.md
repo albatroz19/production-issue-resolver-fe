@@ -1,11 +1,18 @@
 # Production Issue Resolver Frontend
 
-React frontend for the [Production Issue Resolver POC](../production-issue-resolver-poc). Submit incident details and view structured diagnoses from the Java orchestrator at `POST /api/v1/incidents/analyze`.
+React frontend for two projects:
+
+- **Production Issue Resolver** — submit incidents and view diagnoses from the Java orchestrator
+- **Daily Task Tracker** — view AI-summarized daily work from team git commits
+
+Sign in with your user ID and password, then switch between projects anytime from the header.
 
 ## Prerequisites
 
 - Node.js 18+
-- Java backend running on port **8099** — see [production-issue-resolver-poc README](../production-issue-resolver-poc/README.md)
+- Java backend on port **8099** (Production Issue Resolver) — see [production-issue-resolver-poc](../production-issue-resolver-poc/README.md)
+- Daily Task Tracker API on port **8100** — see [daily-timesheet-generator/backend](../daily-timesheet-generator/backend)
+- Python agent on port **8098** (AI summarization) — see [production-issue-resolver-agent](../production-issue-resolver-agent/README.md)
 
 ## Repository layout
 
@@ -52,13 +59,23 @@ npm run dev
 
 Open [http://localhost:5173](http://localhost:5173).
 
-In development, Vite proxies `/api` to `http://localhost:8099`, so you do not need to set `VITE_API_BASE_URL`.
+In development, Vite proxies `/api` → `8099` and `/tracker-api` → `8100`, so you do not need to set base URL env vars.
+
+## Login
+
+Default credentials (configured in timesheet backend `.env`):
+
+- User ID: `mohit.bisht`
+- Password: `@@Test123`
+
+After login, choose **Production Issue Resolver** or **Daily Task Tracker** from the project switcher.
 
 ## Environment variables
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `VITE_API_BASE_URL` | _(empty)_ | API base URL. Leave empty in dev to use the Vite proxy. Set to `http://localhost:8099` for direct calls (preview/production builds). |
+| `VITE_API_BASE_URL` | _(empty)_ | Issue resolver API base. Leave empty in dev to use the Vite proxy. |
+| `VITE_TRACKER_API_BASE_URL` | _(empty)_ | Daily Task Tracker API base. Leave empty in dev to use the Vite proxy. |
 
 ## API key
 

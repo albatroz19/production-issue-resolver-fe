@@ -12,6 +12,10 @@ export default defineConfig({
   },
   server: {
     proxy: {
+      '/tracker-api': {
+        target: 'http://localhost:8100',
+        changeOrigin: true,
+      },
       '/api': {
         target: 'http://localhost:8099',
         changeOrigin: true,
@@ -20,6 +24,10 @@ export default defineConfig({
   },
   preview: {
     proxy: {
+      '/tracker-api': {
+        target: 'http://localhost:8100',
+        changeOrigin: true,
+      },
       '/api': {
         target: 'http://localhost:8099',
         changeOrigin: true,

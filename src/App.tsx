@@ -1,37 +1,49 @@
-import { useEffect, useState } from 'react';
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 
-import { DiagnosisResult } from '@/components/DiagnosisResult';
-import { Header } from '@/components/Header';
-import { IncidentForm } from '@/components/IncidentForm';
-import { getStoredApiKey, setStoredApiKey, useAnalyzeIncident } from '@/hooks/useAnalyzeIncident';
-import type { IncidentRequest } from '@/types/incident';
+import { AppShell } from '@/components/AppShell';
+import { ProtectedRoute } from '@/components/ProtectedRoute';
+import { AuthProvider } from '@/context/AuthContext';
+import { DailyTaskTrackerPage } from '@/pages/DailyTaskTrackerPage';
+import { LoginPage } from '@/pages/LoginPage';
+import { ProductionIssueResolverPage } from '@/pages/ProductionIssueResolverPage';
+
+function AppRoutes() {
+  return (
+    <Routes>
+      <Route path="/login" element={<LoginPage />} />
+      <Route
+        path="/issue-resolver"
+        element={
+          <ProtectedRoute>
+            <AppShell>
+              <ProductionIssueResolverPage />
+            </AppShell>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/task-tracker"
+        element={
+          <ProtectedRoute>
+            <AppShell>
+              <DailyTaskTrackerPage />
+            </AppShell>
+          </ProtectedRoute>
+        }
+      />
+      <Route path="/" element={<Navigate to="/login" replace />} />
+      <Route path="*" element={<Navigate to="/login" replace />} />
+    </Routes>
+  );
+}
 
 function App() {
-  const [apiKey, setApiKey] = useState('');
-  const { result, error, isLoading, analyze, reset } = useAnalyzeIncident();
-
-  useEffect(() => {
-    setApiKey(getStoredApiKey());
-  }, []);
-
-  const handleApiKeyChange = (value: string) => {
-    setApiKey(value);
-    setStoredApiKey(value);
-  };
-
-  const handleSubmit = async (request: IncidentRequest) => {
-    await analyze(request, apiKey || undefined);
-  };
-
   return (
-    <div className="min-h-screen bg-background">
-      <Header apiKey={apiKey} onApiKeyChange={handleApiKeyChange} />
-
-      <main className="mx-auto grid max-w-7xl gap-6 px-4 py-6 lg:grid-cols-2 lg:px-6">
-        <IncidentForm isLoading={isLoading} onSubmit={handleSubmit} onClearResult={reset} />
-        <DiagnosisResult result={result} error={error} isLoading={isLoading} />
-      </main>
-    </div>
+    <AuthProvider>
+      <BrowserRouter>
+        <AppRoutes />
+      </BrowserRouter>
+    </AuthProvider>
   );
 }
 
