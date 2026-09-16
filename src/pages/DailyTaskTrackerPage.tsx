@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import { fetchTasks, fetchUsers, TrackerApiError } from '@/api/tracker';
+import {
+  downloadDailyChangelog,
+  fetchTasks,
+  fetchUsers,
+  generateDailyChangelog,
+  TrackerApiError,
+} from '@/api/tracker';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,6 +22,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/context/AuthContext';
 import type { DayTasks, UserInfo } from '@/types/tracker';
+import { changelogReportDate } from '@/utils/changelogDate';
 
 function todayBounds(): { from: string; to: string } {
   const now = new Date();
@@ -50,6 +57,10 @@ export function DailyTaskTrackerPage() {
   const [error, setError] = useState<string | null>(null);
   const [isLoadingUsers, setIsLoadingUsers] = useState(true);
   const [isLoadingTasks, setIsLoadingTasks] = useState(true);
+  const [isDownloadingChangelog, setIsDownloadingChangelog] = useState(false);
+  const [isGeneratingChangelog, setIsGeneratingChangelog] = useState(false);
+  const [changelogError, setChangelogError] = useState<string | null>(null);
+  const [changelogSuccess, setChangelogSuccess] = useState<string | null>(null);
 
   useEffect(() => {
     if (!token) return;
@@ -101,22 +112,89 @@ export function DailyTaskTrackerPage() {
 
   const isLoading = isLoadingUsers || isLoadingTasks;
 
+  const reportDate = changelogReportDate(fromDate, toDate);
+
+  const handleGenerateChangelog = async () => {
+    if (!token) return;
+    setIsGeneratingChangelog(true);
+    setChangelogError(null);
+    setChangelogSuccess(null);
+    try {
+      const result = await generateDailyChangelog(token, reportDate, true);
+      setChangelogSuccess(
+        `Report generated for ${result.date} (${result.commit_count} commit${result.commit_count === 1 ? '' : 's'}). Downloading…`,
+      );
+      await downloadDailyChangelog(token, reportDate);
+    } catch (err) {
+      const message =
+        err instanceof TrackerApiError
+          ? err.detail
+          : 'Failed to generate daily report';
+      setChangelogError(message);
+    } finally {
+      setIsGeneratingChangelog(false);
+    }
+  };
+
+  const handleDownloadChangelog = async () => {
+    if (!token) return;
+    setIsDownloadingChangelog(true);
+    setChangelogError(null);
+    try {
+      await downloadDailyChangelog(token, reportDate);
+    } catch (err) {
+      const message =
+        err instanceof TrackerApiError
+          ? err.detail
+          : 'Failed to download changelog';
+      if (err instanceof TrackerApiError && err.status === 404) {
+        setChangelogError(
+          `No report yet for ${reportDate}. Use Generate daily report to build it from commits through now.`,
+        );
+      } else {
+        setChangelogError(message);
+      }
+    } finally {
+      setIsDownloadingChangelog(false);
+    }
+  };
+
   return (
     <div className="mx-auto max-w-7xl space-y-6 px-4 py-6 lg:px-6">
       <Card>
         <CardHeader className="flex flex-row items-start justify-between gap-4">
           <div>
             <CardTitle>Filters</CardTitle>
-            <CardDescription>View all users or filter by a specific team member.</CardDescription>
+            <CardDescription>
+              Changelog uses the &quot;To&quot; date ({reportDate}): commits from 00:00 IST through
+              now when that day is today. Nightly cron at 00:00 IST refreshes the previous day.
+            </CardDescription>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={isLoadingTasks}
-            onClick={() => loadTasks(true)}
-          >
-            Sync from CodeCommit
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              disabled={isGeneratingChangelog || isDownloadingChangelog}
+              onClick={() => handleGenerateChangelog()}
+            >
+              {isGeneratingChangelog ? 'Generating…' : 'Generate daily report'}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={isDownloadingChangelog || isGeneratingChangelog}
+              onClick={() => handleDownloadChangelog()}
+            >
+              {isDownloadingChangelog ? 'Downloading…' : 'Download report'}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={isLoadingTasks}
+              onClick={() => loadTasks(true)}
+            >
+              Sync from CodeCommit
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-3">
           <div className="space-y-2">
@@ -155,6 +233,20 @@ export function DailyTaskTrackerPage() {
           </div>
         </CardContent>
       </Card>
+
+      {changelogSuccess && (
+        <Card className="border-emerald-500/40">
+          <CardContent className="pt-6 text-sm text-emerald-700 dark:text-emerald-400">
+            {changelogSuccess}
+          </CardContent>
+        </Card>
+      )}
+
+      {changelogError && (
+        <Card className="border-destructive/50">
+          <CardContent className="pt-6 text-sm text-destructive">{changelogError}</CardContent>
+        </Card>
+      )}
 
       {error && (
         <Card className="border-destructive/50">

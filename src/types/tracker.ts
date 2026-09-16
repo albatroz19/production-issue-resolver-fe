@@ -25,3 +25,10 @@ export interface DayTasks {
 export interface TasksResponse {
   days: DayTasks[];
 }
+
+export interface DailyChangelogResponse {
+  date: string;
+  commit_count: number;
+  summary_markdown: string;
+  report_available: boolean;
+}
